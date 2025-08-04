@@ -1,0 +1,42 @@
+# Development files
+.git/
+.github/
+.vscode/
+node_modules/
+vendor/
+tests/
+docs/
+bin/
+
+# Build tools
+webpack.config.js
+package.json
+package-lock.json
+composer.json
+composer.lock
+phpunit.xml
+phpcs.xml
+.phpcs.xml.dist
+
+# Development configuration
+.distignore
+.gitignore
+.editorconfig
+.eslintrc
+.stylelintrc
+
+# Documentation
+README.md
+CHANGELOG.md
+CONTRIBUTING.md
+
+# IDE and OS files
+.DS_Store
+Thumbs.db
+.idea/
+*.sublime-*
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp

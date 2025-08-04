@@ -1,0 +1,117 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  php-checks:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['7.4', '8.0', '8.1', '8.2']
+        wordpress-version: ['5.9', '6.0', '6.1', '6.2', '6.3']
+
+    name: PHP ${{ matrix.php-version }} / WordPress ${{ matrix.wordpress-version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring, intl, gd, zip, mysqli
+          tools: composer, phpcs, phpstan, phpunit
+          coverage: xdebug
+
+      - name: Validate composer.json and composer.lock
+        run: composer validate --strict
+
+      - name: Cache Composer packages
+        id: composer-cache
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ matrix.php-version }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-${{ matrix.php-version }}-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-suggest
+
+      - name: Setup WordPress test environment
+        run: |
+          bash bin/install-wp-tests.sh wordpress_test root '' localhost ${{ matrix.wordpress-version }}
+
+      - name: Run PHPCS (WordPress Coding Standards)
+        run: composer phpcs
+
+      - name: Run PHPStan (Static Analysis)
+        run: composer phpstan
+
+      - name: Run PHPUnit Tests
+        run: composer test
+
+      - name: Upload coverage reports to Codecov
+        if: matrix.php-version == '8.0' && matrix.wordpress-version == '6.2'
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+  security-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Security check
+        run: |
+          composer require --dev roave/security-advisories:dev-latest
+          composer audit
+
+  build-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Check for build artifacts
+        run: |
+          if [ ! -f "assets/css/admin.min.css" ]; then
+            echo "CSS build artifact missing"
+            exit 1
+          fi
+          if [ ! -f "assets/js/admin.min.js" ]; then
+            echo "JS build artifact missing"
+            exit 1
+          fi

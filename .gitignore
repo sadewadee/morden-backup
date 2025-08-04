@@ -1,0 +1,45 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Build artifacts
+/dist/
+/build/
+*.min.css
+*.min.js
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# WordPress specific
+wp-config-local.php
+.htaccess
+
+# Logs
+*.log
+/logs/
+
+# Temporary files
+*.tmp
+*.temp
+/tmp/
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+
+# Plugin specific
+/uploads/
+/backups/
+
+# Test coverage
+/coverage/
+*.coverage
