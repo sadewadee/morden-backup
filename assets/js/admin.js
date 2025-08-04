@@ -14,14 +14,13 @@
         // Initialize the plugin
         init: function() {
             this.bindEvents();
-            this.checkStatus();
             console.log('🚀 Morden Backup initialized successfully');
         },
 
         // Bind event handlers
         bindEvents: function() {
             // Backup button click
-            $(document).on('click', '.morden-backup-btn', function(e) {
+            $(document).on('click', '#morden-backup-create', function(e) {
                 e.preventDefault();
                 MordenBackup.startBackup();
             });
@@ -29,26 +28,27 @@
             // Restore button click
             $(document).on('click', '.morden-restore-btn', function(e) {
                 e.preventDefault();
-                MordenBackup.startRestore();
+                MordenBackup.startRestore($(this).data('backup-path'));
             });
 
             // Migration export button
-            $(document).on('click', '.morden-export-btn', function(e) {
+            $(document).on('click', '#morden-backup-export', function(e) {
                 e.preventDefault();
                 MordenBackup.startExport();
             });
 
             // Migration import button
-            $(document).on('click', '.morden-import-btn', function(e) {
+            $(document).on('click', '#morden-backup-import', function(e) {
                 e.preventDefault();
                 MordenBackup.startImport();
             });
 
-            // Test connection buttons
-            $(document).on('click', '.test-connection-btn', function(e) {
+            // Delete button click
+            $(document).on('click', '.morden-delete-btn', function(e) {
                 e.preventDefault();
-                var storageType = $(this).data('storage-type');
-                MordenBackup.testConnection(storageType);
+                if (confirm('Are you sure you want to delete this backup?')) {
+                    MordenBackup.deleteBackup($(this).data('backup-path'));
+                }
             });
         },
 
@@ -57,21 +57,18 @@
             console.log('Starting backup process...');
             this.showNotice('⏳ Backup process starting...', 'info');
 
-            // TODO: Implement backup AJAX call
             $.ajax({
                 url: mordenBackup.ajaxUrl,
                 type: 'POST',
                 data: {
-                    action: 'morden_backup_start',
-                    nonce: mordenBackup.nonce
+                    action: 'morden_backup_create',
+                    _ajax_nonce: mordenBackup.nonce
                 },
                 success: function(response) {
-                    if (response.success) {
-                        MordenBackup.showNotice('✅ ' + mordenBackup.strings.backupStarted, 'success');
-                        MordenBackup.updateProgress(0);
-                        MordenBackup.trackProgress(response.data.job_id);
+                    if (response.status === 'success') {
+                        MordenBackup.showNotice('✅ ' + response.message, 'success');
                     } else {
-                        MordenBackup.showNotice('❌ ' + response.data, 'error');
+                        MordenBackup.showNotice('❌ ' + response.message, 'error');
                     }
                 },
                 error: function() {
@@ -81,23 +78,23 @@
         },
 
         // Start restore process
-        startRestore: function() {
+        startRestore: function(backupPath) {
             console.log('Starting restore process...');
             this.showNotice('⏳ Restore process starting...', 'info');
 
-            // TODO: Implement restore AJAX call
             $.ajax({
                 url: mordenBackup.ajaxUrl,
                 type: 'POST',
                 data: {
                     action: 'morden_backup_restore',
-                    nonce: mordenBackup.nonce
+                    _ajax_nonce: mordenBackup.nonce,
+                    backup_path: backupPath
                 },
                 success: function(response) {
-                    if (response.success) {
-                        MordenBackup.showNotice('✅ ' + mordenBackup.strings.restoreStarted, 'success');
+                    if (response.status === 'success') {
+                        MordenBackup.showNotice('✅ ' + response.message, 'success');
                     } else {
-                        MordenBackup.showNotice('❌ ' + response.data, 'error');
+                        MordenBackup.showNotice('❌ ' + response.message, 'error');
                     }
                 },
                 error: function() {
@@ -111,60 +108,79 @@
             console.log('Starting export process...');
             this.showNotice('⏳ Export process starting...', 'info');
 
-            // TODO: Implement export functionality
-            this.showNotice('🚀 Export functionality will be implemented here', 'info');
+            $.ajax({
+                url: mordenBackup.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'morden_backup_export',
+                    _ajax_nonce: mordenBackup.nonce
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        MordenBackup.showNotice('✅ Export created successfully. Token: ' + response.token, 'success');
+                    } else {
+                        MordenBackup.showNotice('❌ ' + response.message, 'error');
+                    }
+                },
+                error: function() {
+                    MordenBackup.showNotice('❌ ' + mordenBackup.strings.error, 'error');
+                }
+            });
         },
 
         // Start import process
         startImport: function() {
             console.log('Starting import process...');
             this.showNotice('⏳ Import process starting...', 'info');
+            var token = $('#morden-backup-token').val();
 
-            // TODO: Implement import functionality
-            this.showNotice('🚀 Import functionality will be implemented here', 'info');
-        },
-
-        // Test storage connection
-        testConnection: function(storageType) {
-            console.log('Testing connection for:', storageType);
-            this.showNotice('🔍 Testing ' + storageType + ' connection...', 'info');
-
-            // TODO: Implement connection test
-            setTimeout(function() {
-                MordenBackup.showNotice('✅ ' + storageType + ' connection test successful!', 'success');
-            }, 2000);
-        },
-
-        // Track backup/restore progress
-        trackProgress: function(jobId) {
-            var progressInterval = setInterval(function() {
-                $.ajax({
-                    url: mordenBackup.ajaxUrl,
-                    type: 'POST',
-                    data: {
-                        action: 'morden_backup_progress',
-                        job_id: jobId,
-                        nonce: mordenBackup.nonce
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            var progress = response.data.progress;
-                            MordenBackup.updateProgress(progress);
-
-                            if (progress >= 100) {
-                                clearInterval(progressInterval);
-                                MordenBackup.showNotice('✅ Process completed successfully!', 'success');
-                            }
-                        }
+            $.ajax({
+                url: mordenBackup.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'morden_backup_import',
+                    _ajax_nonce: mordenBackup.nonce,
+                    token: token
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        MordenBackup.showNotice('✅ ' + response.message, 'success');
+                    } else {
+                        MordenBackup.showNotice('❌ ' + response.message, 'error');
                     }
-                });
-            }, 2000);
+                },
+                error: function() {
+                    MordenBackup.showNotice('❌ ' + mordenBackup.strings.error, 'error');
+                }
+            });
         },
 
-        // Check plugin status
-        checkStatus: function() {
-            console.log('Checking plugin status...');
-            // TODO: Implement status check
+        // Delete backup
+        deleteBackup: function(backupPath) {
+            console.log('Deleting backup...');
+            this.showNotice('⏳ Deleting backup...', 'info');
+
+            $.ajax({
+                url: mordenBackup.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'morden_backup_delete_backup',
+                    _ajax_nonce: mordenBackup.nonce,
+                    backup_path: backupPath
+                },
+                success: function(response) {
+                    if (response.success) {
+                        MordenBackup.showNotice('✅ ' + response.data.message, 'success');
+                        // Refresh the page to update the backup list
+                        location.reload();
+                    } else {
+                        MordenBackup.showNotice('❌ ' + response.data.message, 'error');
+                    }
+                },
+                error: function() {
+                    MordenBackup.showNotice('❌ ' + mordenBackup.strings.error, 'error');
+                }
+            });
         },
 
         // Show admin notice
@@ -196,30 +212,6 @@
                     });
                 }, 5000);
             }
-        },
-
-        // Update progress bar
-        updateProgress: function(percentage) {
-            $('.morden-backup-progress-bar').css('width', percentage + '%');
-
-            // Add percentage text if progress bar exists
-            var progressText = $('.morden-backup-progress').find('.progress-text');
-            if (progressText.length === 0) {
-                $('.morden-backup-progress').append('<div class="progress-text" style="text-align: center; margin-top: 8px; font-weight: 600; color: #2c3338;"></div>');
-                progressText = $('.progress-text');
-            }
-            progressText.text(Math.round(percentage) + '%');
-        },
-
-        // Utility function to format file sizes
-        formatFileSize: function(bytes) {
-            if (bytes === 0) return '0 Bytes';
-
-            var k = 1024;
-            var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-            var i = Math.floor(Math.log(bytes) / Math.log(k));
-
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
     };
 

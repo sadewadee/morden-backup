@@ -1,38 +1,43 @@
 <?php
 namespace MordenBackup\Migration;
 
-/**
- * TokenManager - Manage migration tokens
- *
- * @package MordenBackup\Migration
- * @version 1.0.0
- */
 class TokenManager
 {
-    /**
-     * Generate secure migration token
-     */
-    public function generateToken(array $backupData, int $expiryHours = 24): string
+    private $option_name = 'morden_backup_migration_tokens';
+
+    public function create_token(string $backup_path)
     {
-        // TODO: Implement token generation
-        return wp_generate_password(32, false);
+        $tokens = get_option($this->option_name, []);
+        $token = wp_generate_password(64, false, false);
+        $expires = time() + (24 * 3600);
+
+        $tokens[$token] = [
+            'backup_path' => $backup_path,
+            'expires' => $expires,
+        ];
+
+        update_option($this->option_name, $tokens);
+
+        return [
+            'token' => $token,
+            'expires' => $expires,
+        ];
     }
 
-    /**
-     * Validate and decode token
-     */
-    public function validateToken(string $token): ?array
+    public function get_backup_path(string $token)
     {
-        // TODO: Implement token validation
-        return null;
-    }
+        $tokens = get_option($this->option_name, []);
 
-    /**
-     * Revoke or extend token
-     */
-    public function manageToken(string $token, string $action): bool
-    {
-        // TODO: Implement token management
-        return true;
+        if (!isset($tokens[$token])) {
+            return false;
+        }
+
+        if (time() > $tokens[$token]['expires']) {
+            unset($tokens[$token]);
+            update_option($this->option_name, $tokens);
+            return false;
+        }
+
+        return $tokens[$token]['backup_path'];
     }
 }

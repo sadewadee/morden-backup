@@ -43,3 +43,5 @@ wp-config-local.php
 # Test coverage
 /coverage/
 *.coverage
+
+.clinerules/
